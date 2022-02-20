@@ -1,0 +1,21 @@
+{
+  "name": "PGA460",
+  "description": "Library for controlling PGA460 series of chips using ESP32 (or any Arduino framework board)",
+  "keywords": "PGA460, ultrasonic sensor driver",
+  "authors": [
+    {
+      "name": "Anirudh M.B.",
+      "email": "anirudh@accessteq.com",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DawnGuardian/PGA460_ESP32_Library"
+  },
+  "version": "1.0.0",
+  "frameworks": "Arduino",
+  "examples": [
+    "examples/*/*.cpp"
+  ]
+}
