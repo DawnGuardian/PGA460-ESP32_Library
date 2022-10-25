@@ -1,5 +1,5 @@
-#ifndef PGA_460_H_
-#define PGA_460_H_
+#ifndef PGA_460_HPP
+#define PGA_460_HPP
 
 #include "Arduino.h"
 

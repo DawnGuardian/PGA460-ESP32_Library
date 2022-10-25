@@ -1,4 +1,4 @@
-#include "PGA460.h"
+#include "PGA460.hpp"
 
 /*---------------------------------------- setTransducerSettings_MA58MF14_7N ----------------------
 |  Function:    setTransducerSettings_MA58MF14_7N

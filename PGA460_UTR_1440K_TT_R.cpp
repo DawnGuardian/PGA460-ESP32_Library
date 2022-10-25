@@ -1,4 +1,4 @@
-#include "PGA460.h"
+#include "PGA460.hpp"
 
 /*---------------------------------------- setTransducerSettings_UTR_1440K_TT_R ----------------------
 |  Function:    setTransducerSettings_UTR_1440K_TT_R

@@ -1,5 +1,5 @@
 #include "Arduino.h"
-#include "PGA460.h"
+#include "PGA460.hpp"
 
 PGA460 pga460;
 
