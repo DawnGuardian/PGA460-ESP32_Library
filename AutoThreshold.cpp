@@ -1,4 +1,4 @@
-#include "PGA460.h"
+#include "PGA460.hpp"
 
 /*---------------------------- autoThreshold --------------------------
  |  Function autoThreshold
