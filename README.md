@@ -3,7 +3,7 @@ An Arduino based library for ESP32-WROOM-32 to utilise PGA460 series of chips.
 
 
 # SETUP
-The libraray utilises the ESP32's UART2 ports to communicate with the PGA460 chip.
+The library utilises the ESP32's UART2 ports to communicate with the PGA460 chip.
 ___
 If you are using the PGA460PSM-EVM, simply connect the RX of ESP32 to TX of the module and TX of ESP32 to RX of the module with pull-ups to 3.3V. (TTL is not 12V for this module, it is 3.3V to 5V).
 ___
@@ -27,4 +27,4 @@ If you are designing your own board, the PGA460 chips' USART port operates at 3.
 
 
 # CREDITS
-This library is based on the Energia library (SLAC741J)[https://www.ti.com/lit/zip/slac741] written by Akeem Whitehead and provided by TI. THe main difference being that this library focuses only on UART communication, and (IMO) exposes the PGA460 chip's functionality in a clearer way.
+This library is based on the Energia library (SLAC741J)[https://www.ti.com/lit/zip/slac741] written by Akeem Whitehead and provided by TI. The main difference being that this library focuses only on UART communication, and (IMO) exposes the PGA460 chip's functionality in a clearer way.
