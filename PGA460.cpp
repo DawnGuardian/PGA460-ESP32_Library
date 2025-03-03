@@ -4,16 +4,28 @@
 // Serial read timeout in milliseconds
 #define MAX_MILLIS_TO_WAIT 1000
 
-/*---------------------------------------- pga460 -----------------------------------------------
-|  Function:    pga460
+/*---------------------------------------- initialiseUART -----------------------------------------
+|  Function:    initialiseUART
 |
-|  Purpose:     Constructor function
+|  Purpose:     Initialises UART port and checks connection
 |
-|  Parameters:  none
+|  Parameters:
+|       baudRate -- Baud rate to set UART port. Leave empty to use baud rate passed at object creation
 |
-|  Returns:     none
+|  Returns:     Returns bool representing the result of system diagnostic after
+|       UART initialisation attempt
 *--------------------------------------------------------------------------------------------------*/
-PGA460::PGA460() {}
+bool PGA460::initialiseUART(uint32_t baudRate) {
+    if (baudRate != 0) {
+        _baudRate = baudRate;
+    }
+
+    _uartPort.begin(baudRate, SERIAL_8N2);
+
+    delay(100); // TODO: Remove after testing
+
+    return systemDiagnostic();
+}
 
 /*---------------------------------------- calcChecksum -----------------------------------------
 |  Function:    calcChecksum
@@ -21,11 +33,11 @@ PGA460::PGA460() {}
 |  Purpose:     Calculates checksum for the given command package
 |
 |  Parameters:
-|       command[] (IN) -- The entire command package as a uint8_t array. Should include spaces for the
+|       command[] -- The entire command package as a uint8_t array. Should include spaces for the
 |               sync field, and the checksum field.
-|       commandLenght (IN) -- Length of the command[] array passed in
+|       commandLength -- Length of the command[] array passed in
 |
-|  Returns:     Return the checksum uint8_t value
+|  Returns:     Returns the checksum uint8_t value
 *--------------------------------------------------------------------------------------------------*/
 uint8_t PGA460::calcChecksum(uint8_t command[], uint8_t commandLength) {
     uint16_t sumOverflow = 0;
@@ -59,11 +71,11 @@ uint8_t PGA460::calcChecksum(uint8_t command[], uint8_t commandLength) {
 void PGA460::pga460SerialFlush() {
     delay(10);
     diagnosticField = 0x00;
-    Serial2.flush();
-    while ((Serial2.available() > 0)) {
-        Serial2.read();
+    _uartPort.flush();
+    while ((_uartPort.available() > 0)) {
+        _uartPort.read();
     }
-    Serial2.flush();
+    _uartPort.flush();
     delay(10);
 }
 
@@ -75,13 +87,14 @@ void PGA460::pga460SerialFlush() {
 |  Parameters:
 |       numObj (IN) -- Number of objects to detect (min 1, max 8)
 |
-|  Returns:     none
+|  Returns:     Always returns true
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::preset1BL(uint8_t numObj) {
+bool PGA460::preset1BL(uint8_t numObj) {
     uint8_t buffer[3 + 1] = {SYNC_FIELD, 0x00, numObj, 0x00};
     buffer[3]             = calcChecksum(buffer, 4);
-    Serial2.write(buffer, 4);
+    _uartPort.write(buffer, 4);
     delay(10);
+    return true;
 }
 
 /*---------------------------------------- preset2BL --------------------------------------------
@@ -92,13 +105,14 @@ void PGA460::preset1BL(uint8_t numObj) {
 |  Parameters:
 |       numObj (IN) -- Number of objects to detect (min 1, max 8)
 |
-|  Returns:     none
+|  Returns:     Always returns true
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::preset2BL(uint8_t numObj) {
+bool PGA460::preset2BL(uint8_t numObj) {
     uint8_t buffer[3 + 1] = {SYNC_FIELD, 0x01, numObj, 0x00};
     buffer[3]             = calcChecksum(buffer, 4);
-    Serial2.write(buffer, 4);
+    _uartPort.write(buffer, 4);
     delay(10);
+    return true;
 }
 
 /*---------------------------------------- preset1OL --------------------------------------------
@@ -109,13 +123,14 @@ void PGA460::preset2BL(uint8_t numObj) {
 |  Parameters:
 |       numObj (IN) -- Number of objects to detect (min 1, max 8)
 |
-|  Returns:     none
+|  Returns:     Always returns true
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::preset1OL(uint8_t numObj) {
+bool PGA460::preset1OL(uint8_t numObj) {
     uint8_t buffer[3 + 1] = {SYNC_FIELD, 0x02, numObj, 0x00};
     buffer[3]             = calcChecksum(buffer, 4);
-    Serial2.write(buffer, 4);
+    _uartPort.write(buffer, 4);
     delay(10);
+    return true;
 }
 
 /*---------------------------------------- preset2OL --------------------------------------------
@@ -126,13 +141,14 @@ void PGA460::preset1OL(uint8_t numObj) {
 |  Parameters:
 |       numObj (IN) -- Number of objects to detect (min 1, max 8)
 |
-|  Returns:     none
+|  Returns:     Always returns true
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::preset2OL(uint8_t numObj) {
+bool PGA460::preset2OL(uint8_t numObj) {
     uint8_t buffer[3 + 1] = {SYNC_FIELD, 0x03, numObj, 0x00};
     buffer[3]             = calcChecksum(buffer, 4);
-    Serial2.write(buffer, 4);
+    _uartPort.write(buffer, 4);
     delay(10);
+    return true;
 }
 
 /*---------------------------------------- temperatureOrNoise -----------------------------------
@@ -145,13 +161,14 @@ void PGA460::preset2OL(uint8_t numObj) {
 |               0 -> Temperature
 |               1 -> Noise
 |
-|  Returns:     none
+|  Returns:     Always returns true
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::temperatureOrNoise(uint8_t option) {
+bool PGA460::temperatureOrNoise(uint8_t option) {
     uint8_t buffer[3 + 1] = {SYNC_FIELD, 0x04, option, 0x00};
     buffer[3]             = calcChecksum(buffer, 4);
-    Serial2.write(buffer, 4);
+    _uartPort.write(buffer, 4);
     delay(10);
+    return true;
 }
 
 /*---------------------------------------- readMeasurementResult --------------------------------
@@ -164,36 +181,38 @@ void PGA460::temperatureOrNoise(uint8_t option) {
 |  Parameters:
 |       numObj (IN) -- The number of objects to detect (min 1, max 8)
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of read of measurement
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::readMeasurementResult(uint8_t numObj) {
+bool PGA460::readMeasurementResult(uint8_t numObj) {
     pga460SerialFlush();
     memset(lastMeasurmentResult, 0x00, 32);
 
     uint8_t buffer[3] = {SYNC_FIELD, 0x05, 0x00};
     buffer[2]         = calcChecksum(buffer, 3);
-    Serial2.write(buffer, 3);
+    _uartPort.write(buffer, 3);
     delay(10);
 
     uint8_t dataLength      = 2 + 4 * numObj;
     unsigned long startTime = millis();
 
-    while ((Serial2.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
+    while ((_uartPort.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
     }
 
-    if (Serial2.available() < dataLength) {
-        return;
+    if (_uartPort.available() < dataLength) {
+        return false;
     }
 
     for (uint8_t i = 0; i < dataLength; i++) {
         if (i == 0) {
-            diagnosticField = Serial2.read();
+            diagnosticField = _uartPort.read();
         } else if (i == (dataLength - 1)) {
-            Serial2.read();
+            _uartPort.read();
         } else {
-            lastMeasurmentResult[i - 1] = Serial2.read();
+            lastMeasurmentResult[i - 1] = _uartPort.read();
         }
     }
+
+    return true;
 }
 
 /*---------------------------------------- readTemperatureAndNoise ------------------------------
@@ -205,37 +224,39 @@ void PGA460::readMeasurementResult(uint8_t numObj) {
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of read of temperature/noise
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::readTemperatureAndNoise() {
+bool PGA460::readTemperatureAndNoise() {
     pga460SerialFlush();
 
     uint8_t buffer[3] = {SYNC_FIELD, 0x06, 0x00};
     buffer[2]         = calcChecksum(buffer, 3);
-    Serial2.write(buffer, 3);
+    _uartPort.write(buffer, 3);
     delay(10);
 
     uint8_t dataLength      = 2 + 2;
     unsigned long startTime = millis();
 
-    while ((Serial2.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
+    while ((_uartPort.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
     }
 
-    if (Serial2.available() < dataLength) {
-        return;
+    if (_uartPort.available() < dataLength) {
+        return false;
     }
 
     for (uint8_t i = 0; i < dataLength; i++) {
         if (i == 0) {
-            diagnosticField = Serial2.read();
+            diagnosticField = _uartPort.read();
         } else if (i == (dataLength - 1)) {
-            Serial2.read();
+            _uartPort.read();
         } else if (i == 1) {
-            temperature = Serial2.read();
+            temperature = _uartPort.read();
         } else if (i == 2) {
-            noise = Serial2.read();
+            noise = _uartPort.read();
         }
     }
+
+    return true;
 }
 
 /*---------------------------------------- readEchoDataDump --------------------------------------
@@ -247,36 +268,38 @@ void PGA460::readTemperatureAndNoise() {
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of read of echo data
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::readEchoDataDump() {
+bool PGA460::readEchoDataDump() {
     pga460SerialFlush();
     memset(echoDataDump, 0x00, 128);
 
     uint8_t buffer[3] = {SYNC_FIELD, 0x07, 0x00};
     buffer[2]         = calcChecksum(buffer, 3);
-    Serial2.write(buffer, 3);
+    _uartPort.write(buffer, 3);
     delay(10);
 
     uint8_t dataLength      = 2 + 128;
     unsigned long startTime = millis();
 
-    while ((Serial2.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
+    while ((_uartPort.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
     }
 
-    if (Serial2.available() < dataLength) {
-        return;
+    if (_uartPort.available() < dataLength) {
+        return false;
     }
 
     for (uint8_t i = 0; i < dataLength; i++) {
         if (i == 0) {
-            diagnosticField = Serial2.read();
+            diagnosticField = _uartPort.read();
         } else if (i == (dataLength - 1)) {
-            Serial2.read();
+            _uartPort.read();
         } else {
-            echoDataDump[i - 1] = Serial2.read();
+            echoDataDump[i - 1] = _uartPort.read();
         }
     }
+
+    return true;
 }
 
 /*---------------------------------------- systemDiagnostic -------------------------------------
@@ -288,36 +311,38 @@ void PGA460::readEchoDataDump() {
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of read of system diagnostic register
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::systemDiagnostic() {
+bool PGA460::systemDiagnostic() {
     pga460SerialFlush();
     memset(diagnosticResult, 0x00, 2);
 
     uint8_t buffer[3] = {SYNC_FIELD, 0x08, 0x00};
     buffer[2]         = calcChecksum(buffer, 3);
-    Serial2.write(buffer, 3);
+    _uartPort.write(buffer, 3);
     delay(10);
 
     uint8_t dataLength      = 2 + 2;
     unsigned long startTime = millis();
 
-    while ((Serial2.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
+    while ((_uartPort.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
     }
 
-    if (Serial2.available() < dataLength) {
-        return;
+    if (_uartPort.available() < dataLength) {
+        return false;
     }
 
     for (uint8_t i = 0; i < dataLength; i++) {
         if (i == 0) {
-            diagnosticField = Serial2.read();
+            diagnosticField = _uartPort.read();
         } else if (i == (dataLength - 1)) {
-            Serial2.read();
+            _uartPort.read();
         } else {
-            diagnosticResult[i - 1] = Serial2.read();
+            diagnosticResult[i - 1] = _uartPort.read();
         }
     }
+
+    return true;
 }
 
 /*---------------------------------------- registerRead -----------------------------------------
@@ -328,35 +353,37 @@ void PGA460::systemDiagnostic() {
 |  Parameters:
 |       addr (IN) -- Address of the register to be read from
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of read of desired register
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::registerRead(PGA460Register reg) {
+bool PGA460::registerRead(PGA460Register reg) {
     pga460SerialFlush();
 
     uint8_t buffer[3 + 1] = {SYNC_FIELD, 0x09, reg.addr, 0x00};
     buffer[3]             = calcChecksum(buffer, 4);
-    Serial2.write(buffer, 4);
+    _uartPort.write(buffer, 4);
     delay(10);
 
     uint8_t dataLength      = 2 + 1;
     unsigned long startTime = millis();
 
-    while ((Serial2.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
+    while ((_uartPort.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
     }
 
-    if (Serial2.available() < dataLength) {
-        return;
+    if (_uartPort.available() < dataLength) {
+        return false;
     }
 
     for (uint8_t i = 0; i < dataLength; i++) {
         if (i == 0) {
-            diagnosticField = Serial2.read();
+            diagnosticField = _uartPort.read();
         } else if (i == (dataLength - 1)) {
-            Serial2.read();
+            _uartPort.read();
         } else {
-            reg.data = Serial2.read();
+            reg.data = _uartPort.read();
         }
     }
+
+    return true;
 }
 
 /*---------------------------------------- registerWrite -----------------------------------------
@@ -368,13 +395,14 @@ void PGA460::registerRead(PGA460Register reg) {
 |       addr (IN) -- Address of the register to be written to
 |       data (IN) -- Data to be written to the register
 |
-|  Returns:     none
+|  Returns:     Always returns true
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::registerWrite(PGA460Register reg) {
+bool PGA460::registerWrite(PGA460Register reg) {
     uint8_t buffer[3 + 2] = {SYNC_FIELD, 0x0A, reg.addr, reg.data, 0x00};
     buffer[4]             = calcChecksum(buffer, 5);
-    Serial2.write(buffer, 5);
+    _uartPort.write(buffer, 5);
     delay(10);
+    return true;
 }
 
 /*---------------------------------------- eepromBulkRead ----------------------------------------
@@ -384,34 +412,34 @@ void PGA460::registerWrite(PGA460Register reg) {
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of read of EEPROM registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::eepromBulkRead() {
+bool PGA460::eepromBulkRead() {
     pga460SerialFlush();
 
     uint8_t buffer[3] = {SYNC_FIELD, 0x0B, 0x00};
     buffer[2]         = calcChecksum(buffer, 3);
-    Serial2.write(buffer, 3);
+    _uartPort.write(buffer, 3);
     delay(10);
 
     uint8_t dataLength      = 2 + 43;
     unsigned long startTime = millis();
 
-    while ((Serial2.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
+    while ((_uartPort.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
     }
 
-    if (Serial2.available() < dataLength) {
-        return;
+    if (_uartPort.available() < dataLength) {
+        return false;
     }
 
     uint8_t readData[43];
     for (uint8_t i = 0; i < dataLength; i++) {
         if (i == 0) {
-            diagnosticField = Serial2.read();
+            diagnosticField = _uartPort.read();
         } else if (i == (dataLength - 1)) {
-            Serial2.read();
+            _uartPort.read();
         } else {
-            readData[i - 1] = Serial2.read();
+            readData[i - 1] = _uartPort.read();
         }
     }
     USER_DATA1.data   = readData[0];
@@ -457,6 +485,8 @@ void PGA460::eepromBulkRead() {
     TEMP_TRIM.data    = readData[40];
     P1_GAIN_CTRL.data = readData[41];
     P2_GAIN_CTRL.data = readData[42];
+
+    return true;
 }
 
 /*---------------------------------------- eepromBulkWrite----------------------------------------
@@ -466,9 +496,9 @@ void PGA460::eepromBulkRead() {
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Always returns true
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::eepromBulkWrite() {
+bool PGA460::eepromBulkWrite() {
     uint8_t buffer[3 + 43] = {SYNC_FIELD, 0x0C,
                               USER_DATA1.data, USER_DATA2.data, USER_DATA3.data, USER_DATA4.data, USER_DATA5.data,
                               USER_DATA6.data, USER_DATA7.data, USER_DATA8.data, USER_DATA9.data, USER_DATA10.data,
@@ -479,8 +509,9 @@ void PGA460::eepromBulkWrite() {
                               FREQ_DIAG.data, SAT_FDIAG_TH.data, FVOLT_DEC.data, DECPL_TEMP.data, DSP_SCALE.data, TEMP_TRIM.data,
                               P1_GAIN_CTRL.data, P2_GAIN_CTRL.data, 0x00};
     buffer[45]             = calcChecksum(buffer, 46);
-    Serial2.write(buffer, 46);
+    _uartPort.write(buffer, 46);
     delay(10);
+    return true;
 }
 
 /*---------------------------------------- eepromBulkWrite----------------------------------------
@@ -491,9 +522,9 @@ void PGA460::eepromBulkWrite() {
 |  Parameters:
 |       data[] (IN) -- Array of 43 bytes with the threshold data
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of write to EEPROM registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::eepromBulkWrite(uint8_t data[]) {
+bool PGA460::eepromBulkWrite(uint8_t data[]) {
     USER_DATA1.data   = data[0];
     USER_DATA2.data   = data[1];
     USER_DATA3.data   = data[2];
@@ -538,7 +569,7 @@ void PGA460::eepromBulkWrite(uint8_t data[]) {
     P1_GAIN_CTRL.data = data[41];
     P2_GAIN_CTRL.data = data[42];
 
-    eepromBulkWrite();
+    return eepromBulkWrite();
 }
 
 /*---------------------------------------- tvgBulkRead -------------------------------------------
@@ -548,34 +579,34 @@ void PGA460::eepromBulkWrite(uint8_t data[]) {
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of read of TVG registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::tvgBulkRead() {
+bool PGA460::tvgBulkRead() {
     pga460SerialFlush();
 
     uint8_t buffer[3] = {SYNC_FIELD, 0x0D, 0x00};
     buffer[2]         = calcChecksum(buffer, 3);
-    Serial2.write(buffer, 3);
+    _uartPort.write(buffer, 3);
     delay(10);
 
     uint8_t dataLength      = 2 + 7;
     unsigned long startTime = millis();
 
-    while ((Serial2.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
+    while ((_uartPort.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
     }
 
-    if (Serial2.available() < dataLength) {
-        return;
+    if (_uartPort.available() < dataLength) {
+        return false;
     }
 
     uint8_t readData[7];
     for (uint8_t i = 0; i < dataLength; i++) {
         if (i == 0) {
-            diagnosticField = Serial2.read();
+            diagnosticField = _uartPort.read();
         } else if (i == (dataLength - 1)) {
-            Serial2.read();
+            _uartPort.read();
         } else {
-            readData[i - 1] = Serial2.read();
+            readData[i - 1] = _uartPort.read();
         }
     }
     TVGAIN0.data = readData[0];
@@ -585,6 +616,8 @@ void PGA460::tvgBulkRead() {
     TVGAIN4.data = readData[4];
     TVGAIN5.data = readData[5];
     TVGAIN6.data = readData[6];
+
+    return true;
 }
 
 /*---------------------------------------- tvgBulkWrite ------------------------------------------
@@ -594,13 +627,14 @@ void PGA460::tvgBulkRead() {
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Always returns true
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::tvgBulkWrite() {
+bool PGA460::tvgBulkWrite() {
     uint8_t buffer[3 + 7] = {SYNC_FIELD, 0x0E, TVGAIN0.data, TVGAIN1.data, TVGAIN2.data, TVGAIN3.data, TVGAIN4.data, TVGAIN5.data, TVGAIN6.data, 0x00};
     buffer[9]             = calcChecksum(buffer, 10);
-    Serial2.write(buffer, 10);
+    _uartPort.write(buffer, 10);
     delay(10);
+    return true;
 }
 
 /*---------------------------------------- tvgBulkWrite ------------------------------------------
@@ -611,9 +645,9 @@ void PGA460::tvgBulkWrite() {
 |  Parameters:
 |       data[] (IN) -- Array of 7 bytes with the time varying gain data
 |
-|  Returns:     none
+|  Returns:     Returns bool representing result of success of write to TVG registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::tvgBulkWrite(uint8_t data[]) {
+bool PGA460::tvgBulkWrite(uint8_t data[]) {
     TVGAIN0.data = data[0];
     TVGAIN1.data = data[1];
     TVGAIN2.data = data[2];
@@ -622,7 +656,7 @@ void PGA460::tvgBulkWrite(uint8_t data[]) {
     TVGAIN5.data = data[5];
     TVGAIN6.data = data[6];
 
-    tvgBulkWrite();
+    return tvgBulkWrite();
 }
 
 /*---------------------------------------- thresholdBulkRead --------------------------------------
@@ -632,34 +666,34 @@ void PGA460::tvgBulkWrite(uint8_t data[]) {
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Returns boll representing success of read of threshold data registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::thresholdBulkRead() {
+bool PGA460::thresholdBulkRead() {
     pga460SerialFlush();
 
     uint8_t buffer[3] = {SYNC_FIELD, 0x0F, 0x00};
     buffer[2]         = calcChecksum(buffer, 3);
-    Serial2.write(buffer, 3);
+    _uartPort.write(buffer, 3);
     delay(10);
 
     uint8_t dataLength      = 2 + 32;
     unsigned long startTime = millis();
 
-    while ((Serial2.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
+    while ((_uartPort.available() < dataLength) && ((millis() - startTime) < MAX_MILLIS_TO_WAIT)) {
     }
 
-    if (Serial2.available() < dataLength) {
-        return;
+    if (_uartPort.available() < dataLength) {
+        return false;
     }
 
     uint8_t readData[32];
     for (uint8_t i = 0; i < dataLength; i++) {
         if (i == 0) {
-            diagnosticField = Serial2.read();
+            diagnosticField = _uartPort.read();
         } else if (i == (dataLength - 1)) {
-            Serial2.read();
+            _uartPort.read();
         } else {
-            readData[i - 1] = Serial2.read();
+            readData[i - 1] = _uartPort.read();
         }
     }
     P1_THR_0.data  = readData[0];
@@ -694,6 +728,8 @@ void PGA460::thresholdBulkRead() {
     P2_THR_13.data = readData[29];
     P2_THR_14.data = readData[30];
     P2_THR_15.data = readData[31];
+
+    return true;
 }
 
 /*---------------------------------------- thresholdBulkWrite --------------------------------------
@@ -703,16 +739,17 @@ void PGA460::thresholdBulkRead() {
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Always returns true
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::thresholdBulkWrite() {
+bool PGA460::thresholdBulkWrite() {
     uint8_t buffer[3 + 32] = {SYNC_FIELD, 0x10, P1_THR_0.data, P1_THR_1.data, P1_THR_2.data, P1_THR_3.data, P1_THR_4.data, P1_THR_5.data, P1_THR_6.data, P1_THR_7.data,
                               P1_THR_8.data, P1_THR_9.data, P1_THR_10.data, P1_THR_11.data, P1_THR_12.data, P1_THR_13.data, P1_THR_14.data, P1_THR_15.data,
                               P2_THR_0.data, P2_THR_1.data, P2_THR_2.data, P2_THR_3.data, P2_THR_4.data, P2_THR_5.data, P2_THR_6.data, P2_THR_7.data,
                               P2_THR_8.data, P2_THR_9.data, P2_THR_10.data, P2_THR_11.data, P2_THR_12.data, P2_THR_13.data, P2_THR_14.data, P2_THR_15.data, 0x00};
     buffer[34]             = calcChecksum(buffer, 35);
-    Serial2.write(buffer, 35);
+    _uartPort.write(buffer, 35);
     delay(10);
+    return true;
 }
 
 /*---------------------------------------- thresholdBulkWrite -------------------------------------
@@ -723,9 +760,9 @@ void PGA460::thresholdBulkWrite() {
 |  Parameters:
 |       data[] (IN) -- Array of 32 bytes with the threshold data
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of write to threshold data registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::thresholdBulkWrite(uint8_t data[]) {
+bool PGA460::thresholdBulkWrite(uint8_t data[]) {
     P1_THR_0.data  = data[0];
     P1_THR_1.data  = data[1];
     P1_THR_2.data  = data[2];
@@ -759,7 +796,7 @@ void PGA460::thresholdBulkWrite(uint8_t data[]) {
     P2_THR_14.data = data[30];
     P2_THR_15.data = data[31];
 
-    thresholdBulkWrite();
+    return thresholdBulkWrite();
 }
 
 /*---------------------------------------- setTransducerSettings ------------------------------------
@@ -770,9 +807,9 @@ void PGA460::thresholdBulkWrite(uint8_t data[]) {
 |  Parameters:
 |       settings[] (IN) -- Array of 43 bytes with transducer settings
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of write to transducer settings registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::setTransducerSettings(uint8_t settings[]) {
+bool PGA460::setTransducerSettings(uint8_t settings[]) {
     USER_DATA1.data   = settings[0];
     USER_DATA2.data   = settings[1];
     USER_DATA3.data   = settings[2];
@@ -817,7 +854,7 @@ void PGA460::setTransducerSettings(uint8_t settings[]) {
     P1_GAIN_CTRL.data = settings[41];
     P2_GAIN_CTRL.data = settings[42];
 
-    eepromBulkWrite();
+    return eepromBulkWrite();
 }
 
 /*---------------------------------------- setTransducerSettings ------------------------------------
@@ -827,9 +864,9 @@ void PGA460::setTransducerSettings(uint8_t settings[]) {
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of write to transducer settings registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::setTransducerSettings() {
+bool PGA460::setTransducerSettings() {
     USER_DATA1.data   = 0x00;
     USER_DATA2.data   = 0x00;
     USER_DATA3.data   = 0x00;
@@ -874,7 +911,7 @@ void PGA460::setTransducerSettings() {
     P1_GAIN_CTRL.data = 0x00;
     P2_GAIN_CTRL.data = 0x00;
 
-    eepromBulkWrite();
+    return eepromBulkWrite();
 }
 
 /*---------------------------------------- setThreshold --------------------------------------------
@@ -886,9 +923,9 @@ void PGA460::setTransducerSettings() {
 |       preset -- Specifies which preset to be affected. (1 - Preset 1, 2 - Preset 2)
 |       settings[] (IN) -- Array of 16 bytes with transducer settings
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of write to threshold data registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::setThreshold(uint8_t preset, uint8_t settings[]) {
+bool PGA460::setThreshold(uint8_t preset, uint8_t settings[]) {
     if (preset == 1) {
         P1_THR_0.data  = settings[0];
         P1_THR_1.data  = settings[1];
@@ -925,7 +962,7 @@ void PGA460::setThreshold(uint8_t preset, uint8_t settings[]) {
         P2_THR_15.data = settings[15];
     }
 
-    thresholdBulkWrite();
+    return thresholdBulkWrite();
 }
 
 /*---------------------------------------- setThreshold --------------------------------------------
@@ -941,9 +978,9 @@ void PGA460::setThreshold(uint8_t preset, uint8_t settings[]) {
 |           2 -> All L1 and T1
 |           3 -> All midcode
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of write to threshold data registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::setThreshold(uint8_t preset, uint8_t option) {
+bool PGA460::setThreshold(uint8_t preset, uint8_t option) {
     switch (option) {
         case 0: {
             uint8_t thresholdBuffer[] = {0x44, 0x44, 0x44, 0x44, 0x55, 0x55, 0x9C, 0xD0, 0x72, 0x10, 0x63, 0x28, 0x30, 0x34, 0x3C, 0x00};
@@ -969,7 +1006,7 @@ void PGA460::setThreshold(uint8_t preset, uint8_t option) {
             break;
     }
 
-    thresholdBulkWrite();
+    return thresholdBulkWrite();
 }
 
 /*---------------------------------------- setTVG ----------------------------------------------------
@@ -980,9 +1017,9 @@ void PGA460::setThreshold(uint8_t preset, uint8_t option) {
 |  Parameters:
 |       settings[] (IN) -- Array of 8 bytes with gain settings
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of write to TVG registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::setTVG(uint8_t settings[]) {
+bool PGA460::setTVG(uint8_t settings[]) {
     TVGAIN0.data   = settings[0];
     TVGAIN1.data   = settings[1];
     TVGAIN2.data   = settings[2];
@@ -992,7 +1029,7 @@ void PGA460::setTVG(uint8_t settings[]) {
     TVGAIN6.data   = settings[6];
     INIT_GAIN.data = settings[7];
 
-    tvgBulkWrite();
+    return tvgBulkWrite();
 }
 
 /*---------------------------------------- setTVG -------------------------------------------------
@@ -1007,9 +1044,9 @@ void PGA460::setTVG(uint8_t settings[]) {
 |           2 -> All L1 and T1
 |           3 -> All midcode
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of write to TVG registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::setTVG(uint8_t option) {
+bool PGA460::setTVG(uint8_t option) {
     switch (option) {
         case 0: {
             uint8_t tvgBuffer[] = {0x44, 0x44, 0x44, 0x08, 0x64, 0x9A, 0x4C, 0x40};
@@ -1035,31 +1072,5 @@ void PGA460::setTVG(uint8_t option) {
             break;
     }
 
-    tvgBulkWrite();
-}
-
-/*---------------------------------------- initialisePGA460 -------------------------------------------
-|  Function:    initialisePGA460
-|
-|  Purpose:     Sets up UART communication with the PGA460 and writes inital data to it
-|
-|  Parameters:
-|       parameter_name (IN, OUT, or IN/OUT) -- The baud rate for communication between the board and PGA460
-|
-|  Returns:     none
-*--------------------------------------------------------------------------------------------------*/
-void PGA460::initialiseUART(uint32_t baudRate) {
-    pinMode(COM_SEL, OUTPUT);
-    digitalWrite(COM_SEL, LOW);
-
-    pinMode(COM_PD, OUTPUT);
-    digitalWrite(COM_PD, LOW);
-
-    pinMode(MEM_HOLD, OUTPUT);
-    digitalWrite(MEM_HOLD, HIGH);
-
-    pinMode(MEM_CS, OUTPUT);
-    digitalWrite(MEM_CS, HIGH);
-
-    Serial2.begin(baudRate, SERIAL_8N2);
+    return tvgBulkWrite();
 }

@@ -7,9 +7,9 @@
 |
 |  Parameters:  none
 |
-|  Returns:     none
+|  Returns:     Returns bool representing success of write to transducer settings registers
 *--------------------------------------------------------------------------------------------------*/
-void PGA460::setTransducerSettings_MA40S4() {
+bool PGA460::setTransducerSettings_MA40S4() {
     USER_DATA1.data   = 0x00;
     USER_DATA2.data   = 0x00;
     USER_DATA3.data   = 0x00;
@@ -54,5 +54,5 @@ void PGA460::setTransducerSettings_MA40S4() {
     P1_GAIN_CTRL.data = 0x00;
     P2_GAIN_CTRL.data = 0x00;
 
-    eepromBulkWrite();
+    return eepromBulkWrite();
 }

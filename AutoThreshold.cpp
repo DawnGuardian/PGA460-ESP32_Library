@@ -20,7 +20,7 @@
  |
  |  Returns:  none
  *-------------------------------------------------------------------*/
-void PGA460::autoThreshold(uint8_t windowIndex, uint8_t autoMax, uint8_t noiseMargin) {
+bool PGA460::autoThreshold(uint8_t windowIndex, uint8_t autoMax, uint8_t noiseMargin) {
     // local variables
     uint8_t thresholdTime[6];     // threshold time values for selected preset
     uint8_t thresholdLevel[10];   // threshold level values for selected preset
@@ -338,5 +338,5 @@ void PGA460::autoThreshold(uint8_t windowIndex, uint8_t autoMax, uint8_t noiseMa
     P1_THR_14.data = thresholdLevel[8];
     P1_THR_15.data = thresholdLevel[9];
 
-    thresholdBulkWrite();
+    return thresholdBulkWrite();
 }

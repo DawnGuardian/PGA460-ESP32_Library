@@ -2,18 +2,21 @@
 An Arduino based library for ESP32-WROOM-32 to utilise PGA460 series of chips.
 
 
-# SETUP
-The library utilises the ESP32's UART2 ports to communicate with the PGA460 chip.
+# SETUP FOR TEXAS INSTRUMENTS DEV BOARDS
+## ***IMPORTANT:***
+***BEFORE 2024.06.05.0: THE LIBRARY WOULD CONTROL REQUIRED PINS***
+
+***AFTER 2024.06.05.0: PIN SETUP AND CONTROL - ESPECIALLY WHEN INTERFACING OF DEV BOARD CONTROL PINS - IS NOW TO THE USER***
 ___
 If you are using the PGA460PSM-EVM, simply connect the RX of ESP32 to TX of the module and TX of ESP32 to RX of the module with pull-ups to 3.3V. (TTL is not 12V for this module, it is 3.3V to 5V).
 ___
 If you are using the BOOSTXL-PGA460, connect the following:
-- TX of ESP32 to UARX (J1, 3*)
-- RX of ESP32 to UARX (J1, 4*)
-- IO32 of ESP32 to COM_S (J4, 17*)
-- IO33 of ESP32 to COM_P (J4, 18*)
-- IO25 of ESP32 to MHLD (J4, 36*)
-- IO26 of ESP32 to MCS (J4, 37*)
+- RX of ESP32 to UARX (J1, 3*)
+- TX of ESP32 to UATX (J1, 4*)
+- IO32 of ESP32 to COM_S (J4, 17*) (SET LOW)
+- IO33 of ESP32 to COM_P (J4, 18*) (SET LOW)
+- IO25 of ESP32 to MHLD (J4, 36*) (SET HIGH)
+- IO26 of ESP32 to MCS (J4, 37*) (SET HIGH)
 
 \* - These are not pin numbers of the jumper blocks themselves, but pin number written on the jumper block.
 

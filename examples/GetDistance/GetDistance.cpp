@@ -8,27 +8,45 @@ void setup() {
     Serial.begin(115200);
     Serial.printf("UART connection established\nBeginning configuration ...\n");
 
-    pga460.initialiseUART(115200);
-    Serial.flush();
-    Serial.printf("CHOOSE TRANSDUCER: (TYPE IN INDEX)\n");
-    Serial.printf("1 -> Murata MA40H1S-R\t\t(BOOSTXL-PGA460 Daughter Card Direct Drive Transducer\n");
-    Serial.printf("2 -> Murata MA58MF14-7N\t\t(BOOSTXL-PGA460 Daughter Card Transformer Drive Transducer\n");
-    Serial.printf("3 -> PUI Audio UTR-1440K-TT-R\t(PGA460PSM-EVM Transducer\n");
-    while (!Serial.available()) {
+    while (!pga460.initialiseUART(115200)) {
+        delay(1000);
+        Serial.printf("Unable to connect to PGA460 - retrying ...\n");
     }
-    int option = Serial.readString().toInt();
-    if (option == 1) {
-        pga460.setTransducerSettings_MA40H1S_R();
-        Serial.printf("Murata MA40H1S-R transducer settings applied\n");
-    } else if (option == 2) {
-        pga460.setTransducerSettings_MA58MF14_7N();
-        Serial.printf("Murata MA58MF14-7N transducer settings applied\n");
-    } else if (option == 3) {
-        pga460.setTransducerSettings_UTR_1440K_TT_R();
-        Serial.printf("PUI Audio UTR-1440K-TT-R transducer settings applied\n");
-    } else {
-        pga460.setTransducerSettings_MA40H1S_R();
-        Serial.printf("Murata MA40H1S-R transducer settings applied\n");
+
+    while (true) {
+        Serial.flush();
+        Serial.printf("CHOOSE TRANSDUCER: (TYPE IN INDEX)\n");
+        Serial.printf("1 -> Murata MA40H1S-R\t\t(BOOSTXL-PGA460 Daughter Card Direct Drive Transducer\n");
+        Serial.printf("2 -> Murata MA58MF14-7N\t\t(BOOSTXL-PGA460 Daughter Card Transformer Drive Transducer\n");
+        Serial.printf("3 -> PUI Audio UTR-1440K-TT-R\t(PGA460PSM-EVM Transducer\n");
+
+        while (!Serial.available()) {
+        }
+
+        int option = Serial.readString().toInt();
+        if (option == 1) {
+            if (pga460.setTransducerSettings_MA40H1S_R()) {
+                Serial.printf("Murata MA40H1S-R transducer settings applied\n");
+                break;
+            }
+        } else if (option == 2) {
+            if (pga460.setTransducerSettings_MA58MF14_7N()) {
+                Serial.printf("Murata MA58MF14-7N transducer settings applied\n");
+                break;
+            }
+        } else if (option == 3) {
+            if (pga460.setTransducerSettings_UTR_1440K_TT_R()) {
+                Serial.printf("PUI Audio UTR-1440K-TT-R transducer settings applied\n");
+                break;
+            }
+        } else {
+            if (pga460.setTransducerSettings_MA40H1S_R()) {
+                Serial.printf("Murata MA40H1S-R transducer settings applied\n");
+                break;
+            }
+        }
+
+        Serial.printf("Error in setting transducer settings - retry\n\n");
     }
 
     pga460.REC_LENGTH.data = 0x30;
@@ -60,23 +78,28 @@ void setup() {
 void loop() {
     Serial.printf("--------------------------------------------------------------------------------------------------------------\n");
 
-    pga460.preset1BL(1);
-    pga460.readMeasurementResult(1);
-    pga460.temperatureOrNoise(0);
-    pga460.temperatureOrNoise(1);
-    pga460.readTemperatureAndNoise();
+    bool successfulRead = true;
+    successfulRead      = successfulRead && pga460.preset1BL(1);
+    successfulRead      = successfulRead && pga460.readMeasurementResult(1);
+    successfulRead      = successfulRead && pga460.temperatureOrNoise(0);
+    successfulRead      = successfulRead && pga460.temperatureOrNoise(1);
+    successfulRead      = successfulRead && pga460.readTemperatureAndNoise();
 
-    int timeOfFlight    = (pga460.lastMeasurmentResult[0] << 8) + pga460.lastMeasurmentResult[1]; // in μs
-    uint8_t temperature = pga460.temperature;                                                     // needs to be converted
+    if (successfulRead) {
+        int timeOfFlight    = (pga460.lastMeasurmentResult[0] << 8) + pga460.lastMeasurmentResult[1]; // in μs
+        uint8_t temperature = pga460.temperature;                                                     // needs to be converted
 
-    double distance          = 343.0 * (timeOfFlight / 2.0) / 1000; // in mm
-    double parsedTemperature = (temperature - 64.0) / 1.5;          // in °C
+        double distance          = 343.0 * (timeOfFlight / 2.0) / 1000; // in mm
+        double parsedTemperature = (temperature - 64.0) / 1.5;          // in °C
 
-    Serial.printf("ToF\t\t: %d μs\n", timeOfFlight);
-    Serial.printf("Object detected\t: %f mm\n", distance);
-    Serial.printf("Object width\t: %d μs\n", (pga460.lastMeasurmentResult[2] * 8));
-    Serial.printf("Object peak amp\t: %d μs\n", (pga460.lastMeasurmentResult[3]));
-    Serial.printf("Temperature\t: %f °C\n", parsedTemperature);
+        Serial.printf("ToF\t\t: %d μs\n", timeOfFlight);
+        Serial.printf("Object detected\t: %f mm\n", distance);
+        Serial.printf("Object width\t: %d μs\n", (pga460.lastMeasurmentResult[2] * 8));
+        Serial.printf("Object peak amp\t: %d μs\n", (pga460.lastMeasurmentResult[3]));
+        Serial.printf("Temperature\t: %f °C\n", parsedTemperature);
+    } else {
+        Serial.printf("ERROR READING PGA460 DATA\n");
+    }
 
     Serial.printf("--------------------------------------------------------------------------------------------------------------\n");
     delay(1000);

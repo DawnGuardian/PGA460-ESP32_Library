@@ -7,17 +7,7 @@
 /*
   Communication to the PGA460 chip is via UART,
   specifically using UART2 of ESP32
-  ESP_RX2 16
-  ESP_TX2 17
 */
-/*
-  The following pins are required when used in conjuction with
-  the BOOSTXL-PGA460 daughter card for the MSP-EXP430F5529LP launch pad
-*/
-#define COM_SEL 32
-#define COM_PD 33
-#define MEM_HOLD 25
-#define MEM_CS 26
 
 struct PGA460Register {
     uint8_t data;
@@ -25,8 +15,29 @@ struct PGA460Register {
 };
 
 class PGA460 {
+    // Constructor/destructor
   public:
+    PGA460() : _uartPort(Serial2), _baudRate(115200) {};
+
+    explicit PGA460(HardwareSerial &hardwareSerial, uint32_t baudRate) : _uartPort(hardwareSerial), _baudRate(baudRate) {};
+
+    ~PGA460() {};
+
+    // UART communication with external logger and PGA460
+  private:
+    HardwareSerial &_uartPort;
+    uint32_t _baudRate;
+
+  public:
+    bool initialiseUART(uint32_t baudRate = 0);
+
+    // UART communications support
+  private:
+    uint8_t calcChecksum(uint8_t command[], uint8_t commandLength);
+    void pga460SerialFlush();
+
     // PGA460 registers by name with default settings
+  public:
     struct PGA460Register USER_DATA1    = {0x00, 0x00};
     struct PGA460Register USER_DATA2    = {0x00, 0x01};
     struct PGA460Register USER_DATA3    = {0x00, 0x02};
@@ -120,73 +131,75 @@ class PGA460 {
     const struct PGA460Register THR_CRC = {0x00, 0x7F};
 
     // Buffer variables
+  private:
     const uint8_t SYNC_FIELD = 0x55;
     uint8_t diagnosticField  = 0x00;
+
+  public:
     uint8_t lastMeasurmentResult[32];
     uint8_t temperature;
     uint8_t noise;
     uint8_t echoDataDump[128];
     uint8_t diagnosticResult[2];
 
-    // Constructor
-    PGA460();
-
     // Trigger commands
-    void preset1BL(uint8_t numObj);
-    void preset2BL(uint8_t numObj);
-    void preset1OL(uint8_t numObj);
-    void preset2OL(uint8_t numObj);
-    void temperatureOrNoise(uint8_t option);
+  public:
+    bool preset1BL(uint8_t numObj);
+    bool preset2BL(uint8_t numObj);
+    bool preset1OL(uint8_t numObj);
+    bool preset2OL(uint8_t numObj);
+    bool temperatureOrNoise(uint8_t option);
 
     // Read commands
-    void readMeasurementResult(uint8_t numObj);
-    void readTemperatureAndNoise();
-    void readEchoDataDump();
-    void systemDiagnostic();
+  public:
+    bool readMeasurementResult(uint8_t numObj);
+    bool readTemperatureAndNoise();
+    bool readEchoDataDump();
+    bool systemDiagnostic();
 
     // Single register
-    void registerRead(PGA460Register reg);
-    void registerWrite(PGA460Register reg);
+  public:
+    bool registerRead(PGA460Register reg);
+    bool registerWrite(PGA460Register reg);
 
     // EEPROM R/W
-    void eepromBulkRead();
-    void eepromBulkWrite();
-    void eepromBulkWrite(uint8_t data[]);
+  public:
+    bool eepromBulkRead();
+    bool eepromBulkWrite();
+    bool eepromBulkWrite(uint8_t data[]);
 
     // Time Varying Gain R/W
-    void tvgBulkRead();
-    void tvgBulkWrite();
-    void tvgBulkWrite(uint8_t data[]);
+  public:
+    bool tvgBulkRead();
+    bool tvgBulkWrite();
+    bool tvgBulkWrite(uint8_t data[]);
 
     // Threshold values R/W
-    void thresholdBulkRead();
-    void thresholdBulkWrite();
-    void thresholdBulkWrite(uint8_t data[]);
+  public:
+    bool thresholdBulkRead();
+    bool thresholdBulkWrite();
+    bool thresholdBulkWrite(uint8_t data[]);
 
     // PGA460 setup
-    void setTransducerSettings(uint8_t settings[]);
-    void setTransducerSettings();
-    void setThreshold(uint8_t preset, uint8_t settings[]);
-    void setThreshold(uint8_t preset, uint8_t option);
-    void setTVG(uint8_t settings[]);
-    void setTVG(uint8_t option);
+  public:
+    bool setTransducerSettings(uint8_t settings[]);
+    bool setTransducerSettings();
+    bool setThreshold(uint8_t preset, uint8_t settings[]);
+    bool setThreshold(uint8_t preset, uint8_t option);
+    bool setTVG(uint8_t settings[]);
+    bool setTVG(uint8_t option);
+
+    // Auto-threshold function
+  public:
+    bool autoThreshold(uint8_t windowIndex, uint8_t autoMax, uint8_t noiseMargin);
 
     // PGA460 setup for different transducers
     // WARNING: THESE FUNCTIONS WILL AFFECT TVG SETTINGS
-    void setTransducerSettings_MA58MF14_7N();
-    void setTransducerSettings_MA40H1S_R();
-    void setTransducerSettings_MA40S4();
-    void setTransducerSettings_UTR_1440K_TT_R();
-
-    // Setup UART communication with external logger and PGA460
-    void initialiseUART(uint32_t baudRate);
-
-    // Auto-threshold function
-    void autoThreshold(uint8_t windowIndex, uint8_t autoMax, uint8_t noiseMargin);
-
-  private:
-    uint8_t calcChecksum(uint8_t command[], uint8_t commandLength);
-    void pga460SerialFlush();
+  public:
+    bool setTransducerSettings_MA58MF14_7N();
+    bool setTransducerSettings_MA40H1S_R();
+    bool setTransducerSettings_MA40S4();
+    bool setTransducerSettings_UTR_1440K_TT_R();
 };
 
 #endif
